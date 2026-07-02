@@ -10,38 +10,82 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1"
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
 
   api:
     build: .
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
-      - nlp
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nlp:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/geosearch?sslmode=disable
       REDIS_URL: redis://redis:6379
       NLP_SERVICE_URL: http://nlp:8000
       CORS_ORIGIN: http://localhost:3000
       PORT: "8080"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "1"
 
   nlp:
     build: ./nlp
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   frontend:
     build: ./frontend
     ports:
       - "3000:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:

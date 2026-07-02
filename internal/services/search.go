@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +14,7 @@ import (
 	"geo-search/internal/models"
 )
 
-func Search(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string, req *models.SearchRequest) (*models.SearchResponse, error) {
+func Search(ctx context.Context, pool *pgxpool.Pool, rdb *redis.Client, nlpURL string, req *models.SearchRequest) (*models.SearchResponse, error) {
 	if req.Radius <= 0 {
 		req.Radius = 2000
 	}
@@ -22,7 +23,7 @@ func Search(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string, req *models.Se
 	}
 
 	key := CacheKey(req.Query, req.Lat, req.Lon, req.Radius)
-	if cached, err := GetCache(rdb, key); err == nil {
+	if cached, err := GetCache(ctx, rdb, key); err == nil {
 		var resp models.SearchResponse
 		if json.Unmarshal(cached, &resp) == nil {
 			resp.Cached = true
@@ -30,13 +31,13 @@ func Search(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string, req *models.Se
 		}
 	}
 
-	nlpResp, err := ParseQuery(nlpURL, req.Query, "moscow")
+	nlpResp, err := ParseQuery(ctx, nlpURL, req.Query, "moscow")
 	if err != nil {
 		log.Printf("NLP failed, using fallback: %v", err)
 		nlpResp = FallbackParse(req.Query)
 	}
 
-	pois, err := queryPOIs(pool, req, nlpResp)
+	pois, err := queryPOIs(ctx, pool, req, nlpResp)
 	if err != nil {
 		return nil, err
 	}
@@ -59,13 +60,13 @@ func Search(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string, req *models.Se
 	}
 
 	if data, err := json.Marshal(resp); err == nil {
-		SetCache(rdb, key, data, 5*time.Minute)
+		SetCache(ctx, rdb, key, data, 5*time.Minute)
 	}
 
 	return resp, nil
 }
 
-func queryPOIs(pool *pgxpool.Pool, req *models.SearchRequest, nlp *models.NLPResponse) ([]models.POI, error) {
+func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchRequest, nlp *models.NLPResponse) ([]models.POI, error) {
 	query := `
 		SELECT 
 			id, name, name_en, category, subcategory, address, city, phone, website,
@@ -128,7 +129,7 @@ func queryPOIs(pool *pgxpool.Pool, req *models.SearchRequest, nlp *models.NLPRes
 	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, req.Limit)
 
-	rows, err := pool.Query(context.Background(), query, args...)
+	rows, err := pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,11 +162,13 @@ func queryPOIs(pool *pgxpool.Pool, req *models.SearchRequest, nlp *models.NLPRes
 }
 
 func sortByScore(pois []models.POI) {
-	for i := 0; i < len(pois); i++ {
-		for j := i + 1; j < len(pois); j++ {
-			if pois[j].Score > pois[i].Score {
-				pois[i], pois[j] = pois[j], pois[i]
-			}
+	slices.SortFunc(pois, func(a, b models.POI) int {
+		if b.Score > a.Score {
+			return 1
 		}
-	}
+		if b.Score < a.Score {
+			return -1
+		}
+		return 0
+	})
 }

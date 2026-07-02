@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,9 @@ import (
 	"geo-search/internal/models"
 )
 
-func ParseQuery(nlpURL, text, city string) (*models.NLPResponse, error) {
+var nlpClient = &http.Client{Timeout: 2 * time.Second}
+
+func ParseQuery(ctx context.Context, nlpURL, text, city string) (*models.NLPResponse, error) {
 	reqBody, err := json.Marshal(map[string]string{
 		"text": text,
 		"city": city,
@@ -20,8 +23,13 @@ func ParseQuery(nlpURL, text, city string) (*models.NLPResponse, error) {
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Post(nlpURL+"/parse", "application/json", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, nlpURL+"/parse", bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := nlpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("nlp request failed: %w", err)
 	}

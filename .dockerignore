@@ -1,0 +1,13 @@
+.git
+.gitignore
+.mimocode
+*.md
+!go.mod
+!go.sum
+.env
+.env.*
+migrations
+scripts
+nlp
+frontend/dist
+frontend/node_modules

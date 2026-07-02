@@ -49,7 +49,7 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 			Sort:   sort,
 		}
 
-		resp, err := services.Search(pool, rdb, nlpURL, req)
+		resp, err := services.Search(c.Request.Context(), pool, rdb, nlpURL, req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

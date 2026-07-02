@@ -16,10 +16,10 @@ func CacheKey(query string, lat, lon float64, radius int) string {
 	return "search:" + hex.EncodeToString(h.Sum(nil))
 }
 
-func GetCache(client *redis.Client, key string) ([]byte, error) {
-	return client.Get(context.Background(), key).Bytes()
+func GetCache(ctx context.Context, client *redis.Client, key string) ([]byte, error) {
+	return client.Get(ctx, key).Bytes()
 }
 
-func SetCache(client *redis.Client, key string, data []byte, ttl time.Duration) error {
-	return client.Set(context.Background(), key, data, ttl).Err()
+func SetCache(ctx context.Context, client *redis.Client, key string, data []byte, ttl time.Duration) error {
+	return client.Set(ctx, key, data, ttl).Err()
 }
