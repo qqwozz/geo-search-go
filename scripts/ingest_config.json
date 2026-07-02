@@ -1,0 +1,6 @@
+{
+  "city": "moscow",
+  "bbox": [37.0, 55.5, 38.0, 56.0],
+  "categories": ["cafe", "restaurant", "bar", "fast_food"],
+  "batch_size": 500
+}
