@@ -1,0 +1,95 @@
+.poi-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.poi-card:hover { background: #f8f9ff; }
+
+.poi-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.poi-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.poi-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.poi-category {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4a90d9;
+  background: #eef3ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.fav-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #ccc;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.fav-btn:hover { color: #e74c3c; }
+.fav-btn.active { color: #e74c3c; }
+
+.poi-card-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.stars { color: #f5a623; letter-spacing: -1px; }
+.rating-num { font-weight: 600; color: #333; }
+.review-count { color: #999; }
+.distance { color: #4a90d9; margin-left: auto; font-weight: 500; }
+
+.poi-address {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #777;
+}
+
+.poi-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  color: #555;
+}
+
+.poi-explanation {
+  margin-top: 8px;
+  font-size: 13px;
+  font-style: italic;
+  color: #666;
+  line-height: 1.4;
+}

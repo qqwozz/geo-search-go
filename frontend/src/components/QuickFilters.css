@@ -1,0 +1,24 @@
+.quick-filters {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.chip {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #d0d0d0;
+  border-radius: 20px;
+  background: #fff;
+  color: #555;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.chip:hover { background: #f0f4ff; border-color: #4a90d9; color: #4a90d9; }
+.chip.active { background: #4a90d9; border-color: #4a90d9; color: #fff; }
