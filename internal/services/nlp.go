@@ -12,7 +12,29 @@ import (
 	"geo-search/internal/models"
 )
 
-var nlpClient = &http.Client{Timeout: 2 * time.Second}
+var nlpClient = &http.Client{
+	Timeout: 2 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     30 * time.Second,
+	},
+}
+
+func CheckNLPHealth(ctx context.Context, nlpURL string) bool {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, nlpURL+"/health", nil)
+	if err != nil {
+		return false
+	}
+
+	resp, err := nlpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+}
 
 func ParseQuery(ctx context.Context, nlpURL, text, city string) (*models.NLPResponse, error) {
 	reqBody, err := json.Marshal(map[string]string{
@@ -35,7 +57,7 @@ func ParseQuery(ctx context.Context, nlpURL, text, city string) (*models.NLPResp
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB limit
 	if err != nil {
 		return nil, err
 	}

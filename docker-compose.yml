@@ -15,6 +15,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -30,6 +31,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -58,6 +60,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -73,6 +76,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -86,6 +90,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:

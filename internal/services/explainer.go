@@ -63,7 +63,7 @@ func GenerateExplanation(poi *models.POI, intent string) string {
 		features = append(features, "парковка")
 	}
 	if poi.Features.FamilyFriendly {
-		features = append(parts, "семейное")
+		features = append(features, "семейное")
 	}
 	if len(features) > 0 {
 		parts = append(parts, fmt.Sprintf("Также есть: %s", strings.Join(features, ", ")))

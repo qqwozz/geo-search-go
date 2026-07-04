@@ -2,7 +2,10 @@ module geo-search
 
 go 1.25.0
 
-require github.com/jackc/pgx/v5 v5.5.5
+require (
+	github.com/jackc/pgx/v5 v5.5.5
+	golang.org/x/time v0.11.0
+)
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect

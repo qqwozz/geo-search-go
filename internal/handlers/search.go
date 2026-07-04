@@ -36,8 +36,19 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 			return
 		}
 
-		radius, _ := strconv.Atoi(c.DefaultQuery("radius", "2000"))
-		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+		if lat < -90 || lat > 90 || lon < -180 || lon > 180 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "coordinates out of range: lat [-90,90], lon [-180,180]"})
+			return
+		}
+
+		radius, err := strconv.Atoi(c.DefaultQuery("radius", "2000"))
+		if err != nil || radius <= 0 {
+			radius = 2000
+		}
+		limit, err := strconv.Atoi(c.DefaultQuery("limit", "20"))
+		if err != nil || limit <= 0 {
+			limit = 20
+		}
 		sort := c.DefaultQuery("sort", "relevance")
 
 		req := &models.SearchRequest{

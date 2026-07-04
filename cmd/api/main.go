@@ -15,18 +15,21 @@ import (
 	"geo-search/internal/config"
 	"geo-search/internal/database"
 	"geo-search/internal/handlers"
+	"geo-search/internal/middleware"
 )
 
 func main() {
 	cfg := config.Load()
 
-	pool, err := database.InitPool(cfg.DatabaseURL)
+	ctx := context.Background()
+
+	pool, err := database.InitPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatal("PostgreSQL connection failed:", err)
 	}
 	defer pool.Close()
 
-	rdb, err := database.InitClient(cfg.RedisURL)
+	rdb, err := database.InitClient(ctx, cfg.RedisURL)
 	if err != nil {
 		log.Fatal("Redis connection failed:", err)
 	}
@@ -42,9 +45,12 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	rl := middleware.NewRateLimiter(0.5, 10) // 30 req/min, burst 10
+	r.Use(rl.Middleware())
+
 	r.GET("/api/search", handlers.SearchHandler(pool, rdb, cfg.NLPServiceURL))
 	r.GET("/api/autocomplete", handlers.AutocompleteHandler())
-	r.GET("/api/health", handlers.HealthHandler(pool, rdb))
+	r.GET("/api/health", handlers.HealthHandler(pool, rdb, cfg.NLPServiceURL))
 
 	r.Static("/assets", "./frontend/dist/assets")
 	r.StaticFile("/", "./frontend/dist/index.html")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,7 +23,7 @@ func Search(ctx context.Context, pool *pgxpool.Pool, rdb *redis.Client, nlpURL s
 		req.Limit = 20
 	}
 
-	key := CacheKey(req.Query, req.Lat, req.Lon, req.Radius)
+	key := CacheKey(req.Query, req.Lat, req.Lon, req.Radius, req.Limit, req.Sort)
 	if cached, err := GetCache(ctx, rdb, key); err == nil {
 		var resp models.SearchResponse
 		if json.Unmarshal(cached, &resp) == nil {
@@ -66,9 +67,36 @@ func Search(ctx context.Context, pool *pgxpool.Pool, rdb *redis.Client, nlpURL s
 	return resp, nil
 }
 
+var allowedColumns = map[string]bool{
+	"category":           true,
+	"has_wifi":           true,
+	"has_outlets":        true,
+	"has_terrace":        true,
+	"has_parking":        true,
+	"has_live_music":     true,
+	"has_breakfast":      true,
+	"is_quiet":           true,
+	"is_family_friendly": true,
+	"is_romantic":        true,
+	"is_dog_friendly":    true,
+	"noise_level":        true,
+	"rating":             true,
+	"review_count":       true,
+	"price_level":        true,
+	"city":               true,
+}
+
+func validateColumn(col string) (string, bool) {
+	if allowedColumns[col] {
+		return col, false
+	}
+	return "", true
+}
+
 func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchRequest, nlp *models.NLPResponse) ([]models.POI, error) {
-	query := `
-		SELECT 
+	var query strings.Builder
+	query.WriteString(`
+		SELECT
 			id, name, name_en, category, subcategory, address, city, phone, website,
 			opening_hours::text, rating, review_count, price_level,
 			has_wifi, has_outlets, has_terrace, has_parking, has_live_music, has_breakfast,
@@ -79,57 +107,54 @@ func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchReques
 			ST_Distance(geom, ST_MakePoint($1, $2)::geography) as distance
 		FROM pois
 		WHERE ST_DWithin(geom, ST_MakePoint($1, $2)::geography, $3)
-	`
+	`)
+
 	args := []interface{}{req.Lon, req.Lat, req.Radius}
-	argIdx := 4
+
+	addFilter := func(col string, value interface{}) {
+		col, invalid := validateColumn(col)
+		if invalid {
+			return
+		}
+		args = append(args, value)
+		query.WriteString(fmt.Sprintf(" AND %s = $%d", col, len(args)))
+	}
 
 	if nlp.Category != "" {
-		query += fmt.Sprintf(" AND category = $%d", argIdx)
-		args = append(args, nlp.Category)
-		argIdx++
+		addFilter("category", nlp.Category)
 	}
 
-	if nlp.Features["wifi"] {
-		query += fmt.Sprintf(" AND has_wifi = TRUE")
+	featureColumns := map[string]string{
+		"wifi":       "has_wifi",
+		"terrace":    "has_terrace",
+		"quiet":      "is_quiet",
+		"breakfast":  "has_breakfast",
+		"outlets":    "has_outlets",
+		"parking":    "has_parking",
+		"romantic":   "is_romantic",
+		"family":     "is_family_friendly",
+		"live_music": "has_live_music",
 	}
-	if nlp.Features["terrace"] {
-		query += fmt.Sprintf(" AND has_terrace = TRUE")
-	}
-	if nlp.Features["quiet"] {
-		query += fmt.Sprintf(" AND is_quiet = TRUE")
-	}
-	if nlp.Features["breakfast"] {
-		query += fmt.Sprintf(" AND has_breakfast = TRUE")
-	}
-	if nlp.Features["outlets"] {
-		query += fmt.Sprintf(" AND has_outlets = TRUE")
-	}
-	if nlp.Features["parking"] {
-		query += fmt.Sprintf(" AND has_parking = TRUE")
-	}
-	if nlp.Features["romantic"] {
-		query += fmt.Sprintf(" AND is_romantic = TRUE")
-	}
-	if nlp.Features["family"] {
-		query += fmt.Sprintf(" AND is_family_friendly = TRUE")
-	}
-	if nlp.Features["live_music"] {
-		query += fmt.Sprintf(" AND has_live_music = TRUE")
+	for feat, col := range featureColumns {
+		if nlp.Features[feat] {
+			if _, invalid := validateColumn(col); invalid {
+				continue
+			}
+			query.WriteString(fmt.Sprintf(" AND %s = TRUE", col))
+		}
 	}
 
 	switch req.Sort {
-	case "distance":
-		query += " ORDER BY geom <-> ST_MakePoint($1, $2)::geography"
 	case "rating":
-		query += " ORDER BY rating DESC"
+		query.WriteString(" ORDER BY rating DESC")
 	default:
-		query += " ORDER BY geom <-> ST_MakePoint($1, $2)::geography"
+		query.WriteString(" ORDER BY geom <-> ST_MakePoint($1, $2)::geography")
 	}
 
-	query += fmt.Sprintf(" LIMIT $%d", argIdx)
 	args = append(args, req.Limit)
+	query.WriteString(fmt.Sprintf(" LIMIT $%d", len(args)))
 
-	rows, err := pool.Query(ctx, query, args...)
+	rows, err := pool.Query(ctx, query.String(), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +176,14 @@ func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchReques
 			&p.Lat, &p.Lon, &p.DistanceMeters,
 		)
 		if err != nil {
-			log.Printf("scan error: %v", err)
-			continue
+			return nil, fmt.Errorf("scan error: %w", err)
 		}
 		p.OpeningHours = hours
 		pois = append(pois, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
 	return pois, nil

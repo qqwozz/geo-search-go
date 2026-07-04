@@ -18,6 +18,9 @@ RUN apk --no-cache add ca-certificates
 COPY --from=builder /app/api /api
 COPY --from=builder /app/frontend/dist /frontend/dist
 
+RUN adduser -D -u 1001 appuser
+USER appuser
+
 EXPOSE 8080
 
 CMD ["/api"]

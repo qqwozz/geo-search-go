@@ -10,9 +10,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func CacheKey(query string, lat, lon float64, radius int) string {
+func CacheKey(query string, lat, lon float64, radius, limit int, sort string) string {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%s:%.6f:%.6f:%d", query, lat, lon, radius)))
+	h.Write([]byte(fmt.Sprintf("%s:%.6f:%.6f:%d:%d:%s", query, lat, lon, radius, limit, sort)))
 	return "search:" + hex.EncodeToString(h.Sum(nil))
 }
 
