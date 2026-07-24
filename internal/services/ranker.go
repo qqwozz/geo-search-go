@@ -49,6 +49,23 @@ func RankByIntent(poi *models.POI, intent string) float64 {
 		dist := math.Max(poi.DistanceMeters, 10)
 		score += (1.0 / dist) * 30
 
+	case "dinner":
+		score += (poi.Rating / 5.0) * 4
+		if poi.PriceLevel >= 2 && poi.PriceLevel <= 4 {
+			score += 2
+		}
+		if poi.Features.LiveMusic {
+			score += 2
+		}
+		if poi.Features.Quiet {
+			score += 1
+		}
+		dist := math.Max(poi.DistanceMeters, 10)
+		score += (1.0 / dist) * 40
+		if poi.ReviewCount > 50 {
+			score += 2
+		}
+
 	default:
 		score += (poi.Rating / 5.0) * 5
 		dist := math.Max(poi.DistanceMeters, 10)
