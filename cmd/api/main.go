@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,19 +19,24 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	cfg := config.Load()
 
 	ctx := context.Background()
 
 	pool, err := database.InitPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal("PostgreSQL connection failed:", err)
+		slog.Error("PostgreSQL connection failed", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	rdb, err := database.InitClient(ctx, cfg.RedisURL)
 	if err != nil {
-		log.Fatal("Redis connection failed:", err)
+		slog.Error("Redis connection failed", "error", err)
+		os.Exit(1)
 	}
 	defer rdb.Close()
 
@@ -67,23 +72,25 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Server starting on http://localhost:%s", cfg.Port)
+		slog.Info("Server starting", "port", cfg.Port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("Server failed:", err)
+			slog.Error("Server failed", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down server...")
+	slog.Info("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		slog.Error("Server forced to shutdown", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Server exited")
+	slog.Info("Server exited")
 }
