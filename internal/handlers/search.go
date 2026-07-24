@@ -50,6 +50,7 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 			limit = 20
 		}
 		sort := c.DefaultQuery("sort", "relevance")
+		city := strings.TrimSpace(c.DefaultQuery("city", "moscow"))
 
 		req := &models.SearchRequest{
 			Query:  query,
@@ -58,6 +59,7 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 			Radius: radius,
 			Limit:  limit,
 			Sort:   sort,
+			City:   city,
 		}
 
 		resp, err := services.Search(c.Request.Context(), pool, rdb, nlpURL, req)

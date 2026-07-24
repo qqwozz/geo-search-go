@@ -46,6 +46,7 @@ type SearchRequest struct {
 	Radius int     `json:"radius" form:"radius"`
 	Limit  int     `json:"limit" form:"limit"`
 	Sort   string  `json:"sort" form:"sort"`
+	City   string  `json:"city" form:"city"`
 }
 
 type SearchResponse struct {

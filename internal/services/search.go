@@ -32,7 +32,7 @@ func Search(ctx context.Context, pool *pgxpool.Pool, rdb *redis.Client, nlpURL s
 		}
 	}
 
-	nlpResp, err := ParseQuery(ctx, nlpURL, req.Query, "moscow")
+	nlpResp, err := ParseQuery(ctx, nlpURL, req.Query, req.City)
 	if err != nil {
 		log.Printf("NLP failed, using fallback: %v", err)
 		nlpResp = FallbackParse(req.Query)
