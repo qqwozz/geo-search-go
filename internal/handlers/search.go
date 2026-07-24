@@ -49,6 +49,10 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 		if err != nil || limit <= 0 {
 			limit = 20
 		}
+		offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		if err != nil || offset < 0 {
+			offset = 0
+		}
 		sort := c.DefaultQuery("sort", "relevance")
 		city := strings.TrimSpace(c.DefaultQuery("city", "moscow"))
 
@@ -58,6 +62,7 @@ func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.Han
 			Lon:    lon,
 			Radius: radius,
 			Limit:  limit,
+			Offset: offset,
 			Sort:   sort,
 			City:   city,
 		}

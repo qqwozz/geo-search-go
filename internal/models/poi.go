@@ -45,6 +45,7 @@ type SearchRequest struct {
 	Lon    float64 `json:"lon" form:"lon"`
 	Radius int     `json:"radius" form:"radius"`
 	Limit  int     `json:"limit" form:"limit"`
+	Offset int     `json:"offset" form:"offset"`
 	Sort   string  `json:"sort" form:"sort"`
 	City   string  `json:"city" form:"city"`
 }

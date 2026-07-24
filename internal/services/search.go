@@ -159,6 +159,11 @@ func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchReques
 	args = append(args, req.Limit)
 	query.WriteString(fmt.Sprintf(" LIMIT $%d", len(args)))
 
+	if req.Offset > 0 {
+		args = append(args, req.Offset)
+		query.WriteString(fmt.Sprintf(" OFFSET $%d", len(args)))
+	}
+
 	rows, err := pool.Query(ctx, query.String(), args...)
 	if err != nil {
 		return nil, err
