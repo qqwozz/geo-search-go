@@ -77,14 +77,12 @@ def map_osm_to_poi(element):
     has_parking = tags.get("parking", "") == "yes" or tags.get("amenity:parking", "") == "yes"
     has_live_music = tags.get("music", "") == "live" or tags.get("live_music", "") == "yes"
     has_breakfast = tags.get("breakfast", "") == "yes"
-    is_quiet = tags.get("smoking", "") == "no"
+    is_quiet = False
     is_family_friendly = tags.get("family_friendly", "") == "yes"
     is_romantic = False
     is_dog_friendly = tags.get("dog", "") == "yes"
 
     noise_level = "medium"
-    if is_quiet:
-        noise_level = "low"
 
     return {
         "osm_id": element.id,
