@@ -144,6 +144,11 @@ func queryPOIs(ctx context.Context, pool *pgxpool.Pool, req *models.SearchReques
 		}
 	}
 
+	if nlp.Location != nil && nlp.Location.Street != "" {
+		args = append(args, "%"+nlp.Location.Street+"%")
+		query.WriteString(fmt.Sprintf(" AND address ILIKE $%d", len(args)))
+	}
+
 	switch req.Sort {
 	case "rating":
 		query.WriteString(" ORDER BY rating DESC")
