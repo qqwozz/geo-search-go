@@ -17,6 +17,7 @@ import (
 	"geo-search/internal/config"
 	"geo-search/internal/database"
 	"geo-search/internal/handlers"
+	"geo-search/internal/metrics"
 	"geo-search/internal/middleware"
 
 	_ "geo-search/docs"
@@ -60,12 +61,14 @@ func main() {
 	}))
 
 	rl := middleware.NewRateLimiter(0.5, 10) // 30 req/min, burst 10
+	defer rl.Stop()
 	r.Use(rl.Middleware())
 
 	r.GET("/api/search", handlers.SearchHandler(pool, rdb, cfg.NLPServiceURL))
 	r.GET("/api/autocomplete", handlers.AutocompleteHandler())
 	r.GET("/api/health", handlers.HealthHandler(pool, rdb, cfg.NLPServiceURL))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/metrics", gin.WrapF(metrics.Default.Handler()))
 
 	r.Static("/assets", "./frontend/dist/assets")
 	r.StaticFile("/", "./frontend/dist/index.html")

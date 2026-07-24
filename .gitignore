@@ -1,79 +1,33 @@
-# Go build artifacts
+# Binaries
 *.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+api
 *.test
 *.out
-*.prof
-*.log
 
-# Go module files (optional - keep go.mod and go.sum)
-# But we want to commit go.mod and go.sum, so don't ignore them
+# Coverage
+coverage.out
+coverage.html
 
-# Compiled binaries
-/geo-search
-/geo-search.exe
-/app
-/app.exe
-
-# Dependency directories
-vendor/
-
-# IDE files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-*~
+
+# OS
 .DS_Store
-
-# OS files
 Thumbs.db
-Desktop.ini
 
-# Downloaded Go tar files (these are large and shouldn't be in repo)
-*.tar.gz
-go1.*.linux-amd64.tar.gz
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 
-# Environment files
+# Go
+vendor/
+
+# Env
 .env
-.env.local
-.env.*.local
 
-# Database files (if local)
-*.db
-*.sqlite
-*.sqlite3
-*.dump
-
-# Logs
-*.log
-logs/
-
-# Temporary files
-tmp/
-temp/
-
-# PostgreSQL data directory (if local)
-data/
-pgdata/
-
-# Binary files
-*.exe
-*.dll
-*.so
-
-# Test coverage
-coverage.out
-coverage.html
-
-# Debug files
-__debug_bin
-
-# Binary from build
-main
-cmd/api/api
-cmd/check/check
-.mimocode/
+# Docker
+docker-compose.override.yml

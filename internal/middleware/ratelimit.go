@@ -19,6 +19,7 @@ type RateLimiter struct {
 	mu       sync.RWMutex
 	rate     rate.Limit
 	burst    int
+	stop     chan struct{}
 }
 
 func NewRateLimiter(rps float64, burst int) *RateLimiter {
@@ -26,6 +27,7 @@ func NewRateLimiter(rps float64, burst int) *RateLimiter {
 		visitors: make(map[string]*visitor),
 		rate:     rate.Limit(rps),
 		burst:    burst,
+		stop:     make(chan struct{}),
 	}
 	go rl.cleanup()
 	return rl
@@ -47,16 +49,27 @@ func (rl *RateLimiter) getVisitor(ip string) *rate.Limiter {
 }
 
 func (rl *RateLimiter) cleanup() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
 	for {
-		time.Sleep(time.Minute)
-		rl.mu.Lock()
-		for ip, v := range rl.visitors {
-			if time.Since(v.lastSeen) > 3*time.Minute {
-				delete(rl.visitors, ip)
+		select {
+		case <-rl.stop:
+			return
+		case <-ticker.C:
+			rl.mu.Lock()
+			for ip, v := range rl.visitors {
+				if time.Since(v.lastSeen) > 3*time.Minute {
+					delete(rl.visitors, ip)
+				}
 			}
+			rl.mu.Unlock()
 		}
-		rl.mu.Unlock()
 	}
+}
+
+func (rl *RateLimiter) Stop() {
+	close(rl.stop)
 }
 
 func (rl *RateLimiter) Middleware() gin.HandlerFunc {

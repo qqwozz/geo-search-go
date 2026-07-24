@@ -24,10 +24,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-geosearch_secret}
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-geosearch_secret}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,7 +52,7 @@ services:
         condition: service_started
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/geosearch?sslmode=disable
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD:-geosearch_secret}@redis:6379
       NLP_SERVICE_URL: http://nlp:8000
       CORS_ORIGIN: http://localhost:3000
       PORT: "8080"

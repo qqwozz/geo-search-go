@@ -26,16 +26,16 @@
 │   Frontend   │────▶│  Go Backend  │────▶│  Python NLP  │
 │  React/Vite  │     │    Gin       │     │   FastAPI    │
 └─────────────┘     └──────┬───────┘     └──────────────┘
-                           │                     │
-                    ┌──────┴───────┐      Парсинг текста
-                    │              │      в структурированные
-              ┌─────▼────┐  ┌─────▼────┐   фильтры
-              │PostgreSQL │  │  Redis    │
-              │ + PostGIS │  │  Cache   │
-              └──────────┘  └──────────┘
-                    │
-           Пространственный запрос
-           + ранжирование по интенту
+                          │                     │
+                   ┌──────┴───────┐      Парсинг текста
+                   │              │      в структурированные
+             ┌─────▼────┐  ┌─────▼────┐   фильтры
+             │PostgreSQL │  │  Redis    │
+             │ + PostGIS │  │  Cache   │
+             └──────────┘  └──────────┘
+                   │
+          Пространственный запрос
+          + ранжирование по интенту
 ```
 
 **NLP парсит запрос:**
@@ -58,7 +58,8 @@
 ```bash
 git clone https://github.com/qqwozz/geo-search-go.git
 cd geo-search-go
-docker compose up -d
+cp .env.example .env
+make dev
 ```
 
 | Сервис | URL | Описание |
@@ -66,6 +67,7 @@ docker compose up -d
 | Web UI | http://localhost:3000 | Карта + поиск |
 | API | http://localhost:8080 | REST API |
 | Swagger | http://localhost:8080/swagger/index.html | Документация API |
+| Metrics | http://localhost:8080/metrics | Prometheus метрики |
 | NLP | http://localhost:8000 | Парсер текста |
 | Postgres | localhost:5432 | БД |
 | Redis | localhost:6379 | Кеш |
@@ -73,8 +75,7 @@ docker compose up -d
 ### Импорт данных
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:5432/geosearch?sslmode=disable" \
-  python3 scripts/ingest_osm.py
+make db-import
 ```
 
 Данные загружаются из OpenStreetMap (кафе, рестораны, бары, фастфуд) в радиусе заданного bbox.
@@ -140,6 +141,22 @@ GET /api/autocomplete?q=кафе
 GET /api/health
 ```
 
+### Prometheus метрики
+
+```
+GET /metrics
+```
+
+| Метрика | Описание |
+|---------|----------|
+| `geo_search_requests_total` | Общее количество запросов |
+| `geo_search_errors_total` | Количество ошибок |
+| `geo_search_cache_hits_total` | Попадания в кеш |
+| `geo_search_cache_misses_total` | Промахи кеша |
+| `geo_search_nlp_calls_total` | Вызовы NLP сервиса |
+| `geo_search_nlp_failures_total` | Ошибки NLP сервиса |
+| `geo_search_avg_response_time_ns` | Среднее время ответа |
+
 ---
 
 ## Интенты и ранжирование
@@ -160,51 +177,63 @@ NLP определяет **интент** запроса и система ра�
 
 ```
 geo-search-go/
-├── cmd/api/main.go              # Точка входа, Swagger, middleware
+├── cmd/api/main.go                 # Точка входа, Swagger, middleware
 ├── internal/
-│   ├── config/                   # Конфигурация из env
-│   ├── database/                 # pgx pool, Redis клиент
-│   ├── handlers/                 # HTTP обработчики
-│   │   ├── search.go             # GET /api/search
-│   │   ├── autocomplete.go       # GET /api/autocomplete
-│   │   └── health.go             # GET /api/health
+│   ├── circuitbreaker/             # Circuit breaker для внешних сервисов
+│   │   ├── breaker.go
+│   │   └── breaker_test.go
+│   ├── config/                     # Конфигурация из env
+│   ├── database/                   # pgx pool, Redis клиент
+│   ├── errors/                     # Структурированные ошибки
+│   │   ├── errors.go
+│   │   └── errors_test.go
+│   ├── handlers/                   # HTTP обработчики
+│   │   ├── search.go               # GET /api/search
+│   │   ├── search_test.go
+│   │   ├── autocomplete.go         # GET /api/autocomplete
+│   │   └── health.go               # GET /api/health
+│   ├── metrics/                    # Prometheus метрики
+│   │   └── metrics.go
 │   ├── middleware/
-│   │   └── ratelimit.go          # Token bucket rate limiter
-│   ├── models/poi.go             # Структуры данных
+│   │   └── ratelimit.go            # Token bucket rate limiter
+│   ├── models/poi.go               # Структуры данных
 │   └── services/
-│       ├── search.go             # Оркестратор поиска
-│       ├── nlp.go                # HTTP клиент к NLP
-│       ├── cache.go              # Redis кеш (SHA-256 ключи, 5 мин TTL)
-│       ├── fallback_parser.go    # Regex fallback парсер
-│       ├── ranker.go             # Intent-based ранжирование
-│       └── explainer.go          # Генерация объяснений на русском
+│       ├── search.go               # Оркестратор поиска
+│       ├── nlp.go                  # HTTP клиент к NLP
+│       ├── cache.go                # Redis кеш (SHA-256 ключи, 5 мин TTL)
+│       ├── fallback_parser.go      # Regex fallback парсер
+│       ├── ranker.go               # Intent-based ранжирование
+│       └── explainer.go            # Генерация объяснений на русском
 ├── nlp/
-│   ├── main.py                   # FastAPI
-│   ├── parser.py                 # Словарный парсинг
-│   ├── dictionaries.py           # Русские словари
-│   ├── location_parser.py        # Извлечение метро/улиц
-│   └── tests/                    # Python тесты
+│   ├── main.py                     # FastAPI
+│   ├── parser.py                   # Словарный парсинг
+│   ├── dictionaries.py             # Русские словари
+│   ├── location_parser.py          # Извлечение метро/улиц
+│   └── tests/                      # Python тесты
 ├── frontend/
 │   ├── src/
-│   │   ├── components/           # React компоненты
-│   │   │   ├── SearchBar         # Поиск с автодополнением
-│   │   │   ├── MapView           # Leaflet карта
-│   │   │   ├── POICard           # Карточка результата
-│   │   │   ├── DetailModal       # Детали места
-│   │   │   ├── ResultsList       # Список результатов
-│   │   │   ├── QuickFilters      # Быстрые фильтры
-│   │   │   └── Header            # Заголовок со статусом
-│   │   └── storage.js            # LocalStorage (избранное, история)
-│   └── Dockerfile                # nginx
+│   │   ├── components/             # React компоненты
+│   │   │   ├── SearchBar           # Поиск с автодополнением
+│   │   │   ├── MapView             # Leaflet карта
+│   │   │   ├── POICard             # Карточка результата
+│   │   │   ├── DetailModal         # Детали места
+│   │   │   ├── ResultsList         # Список результатов
+│   │   │   ├── QuickFilters        # Быстрые фильтры
+│   │   │   └── Header              # Заголовок со статусом
+│   │   ├── test/                   # Frontend тесты (Vitest)
+│   │   └── storage.js              # LocalStorage (избранное, история)
+│   └── Dockerfile                  # nginx
 ├── scripts/
-│   ├── ingest_osm.py             # Импорт из OpenStreetMap
-│   └── ingest_config.json        # bbox и категории
+│   ├── ingest_osm.py               # Импорт из OpenStreetMap
+│   └── ingest_config.json          # bbox и категории
 ├── migrations/
 │   ├── 001_create_database.sql
 │   ├── 002_create_pois_table.sql
 │   └── 003_create_poi_indexes.sql
-├── docs/                         # Swagger документация
-├── Dockerfile                    # Multi-stage Go сборка
+├── .github/workflows/ci.yml        # CI/CD pipeline
+├── docs/                           # Swagger документация
+├── Makefile                        # Команды разработки
+├── Dockerfile                      # Multi-stage Go сборка
 └── docker-compose.yml
 ```
 
@@ -218,10 +247,12 @@ geo-search-go/
 | NLP | Python 3.12, FastAPI |
 | БД | PostgreSQL 16 + PostGIS 3.4 |
 | Кеш | Redis 7 |
-| Frontend | React 18, Vite, Leaflet |
+| Frontend | React 18, Vite, Leaflet, Vitest |
 | Контейнеры | Docker Compose |
 | Логирование | slog (structured JSON) |
 | Документация | Swagger / OpenAPI |
+| Метрики | Prometheus |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -232,6 +263,7 @@ geo-search-go/
 | `PORT` | 8080 | Порт API |
 | `DATABASE_URL` | postgres://postgres:postgres@localhost:5432/geosearch | PostgreSQL |
 | `REDIS_URL` | redis://localhost:6379 | Redis |
+| `REDIS_PASSWORD` | geosearch_secret | Пароль Redis |
 | `NLP_SERVICE_URL` | http://localhost:8000 | Python NLP |
 | `CORS_ORIGIN` | http://localhost:3000 | CORS origin |
 
@@ -240,18 +272,62 @@ geo-search-go/
 ## Разработка
 
 ```bash
-# Go тесты
-go test ./... -v
+# Все команды
+make help
 
-# Python тесты
-cd nlp && pytest tests/ -v
+# Запуск dev окружения
+make dev
 
-# Пересборка Docker
-docker compose up -d --build
+# Тесты
+make test           # Все тесты
+make test-go        # Go тесты
+make test-nlp       # Python тесты
+make test-frontend  # Frontend тесты
+make test-go-cover  # Go тесты с покрытием
+
+# Сборка
+make build          # Docker образы
+make docker-rebuild # Пересборка
 
 # Логи
-docker compose logs -f api
+make docker-logs    # Все сервисы
+make docker-logs-api # Только API
+
+# Линтер
+make lint
+
+# Очистка
+make clean
+
+# Импорт данных
+make db-import
 ```
+
+---
+
+## Roadmap
+
+### Готово
+- [x] Unit-тесты для Go (43 теста)
+- [x] Frontend тесты (Vitest)
+- [x] CI/CD pipeline (GitHub Actions)
+- [x] Makefile для удобных команд
+- [x] Circuit breaker для NLP-сервиса
+- [x] Prometheus метрики (`/metrics`)
+- [x] Structured error types
+- [x] Graceful shutdown для rate limiter
+- [x] Redis с аутентификацией
+
+### Среднесрочно
+- [ ] OpenTelemetry трассировка
+- [ ] Auth/JWT для API
+- [ ] Rate limiter с Redis (для multi-instance)
+
+### Долгосрочно
+- [ ] Multi-city поддержка (Санкт-Петербург, Новосибирск)
+- [ ] ML-ранжирование (обучение на пользовательских кликах)
+- [ ] PWA с офлайн-режимом
+- [ ] Мобильное приложение (React Native)
 
 ---
 
