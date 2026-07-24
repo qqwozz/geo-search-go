@@ -1,0 +1,207 @@
+basePath: /
+definitions:
+  models.Features:
+    properties:
+      breakfast:
+        type: boolean
+      dog_friendly:
+        type: boolean
+      family_friendly:
+        type: boolean
+      live_music:
+        type: boolean
+      outlets:
+        type: boolean
+      parking:
+        type: boolean
+      quiet:
+        type: boolean
+      romantic:
+        type: boolean
+      terrace:
+        type: boolean
+      wifi:
+        type: boolean
+    type: object
+  models.POI:
+    properties:
+      address:
+        type: string
+      category:
+        type: string
+      city:
+        type: string
+      distance_meters:
+        type: number
+      explanation:
+        type: string
+      features:
+        $ref: '#/definitions/models.Features'
+      id:
+        type: integer
+      last_updated:
+        type: string
+      lat:
+        type: number
+      lon:
+        type: number
+      name:
+        type: string
+      name_en:
+        type: string
+      noise_level:
+        type: string
+      opening_hours:
+        type: string
+      phone:
+        type: string
+      price_level:
+        type: integer
+      rating:
+        type: number
+      review_count:
+        type: integer
+      score:
+        type: number
+      subcategory:
+        type: string
+      website:
+        type: string
+    type: object
+  models.SearchResponse:
+    properties:
+      cached:
+        type: boolean
+      center:
+        properties:
+          lat:
+            type: number
+          lon:
+            type: number
+        type: object
+      pois:
+        items:
+          $ref: '#/definitions/models.POI'
+        type: array
+      query:
+        type: string
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Smart geo-search engine for finding places using natural language queries
+    in Russian
+  title: Geo Search API
+  version: "1.0"
+paths:
+  /api/autocomplete:
+    get:
+      consumes:
+      - application/json
+      description: Get autocomplete suggestions for search queries
+      parameters:
+      - description: Partial search query
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+      summary: Get search suggestions
+      tags:
+      - autocomplete
+  /api/health:
+    get:
+      description: Check health of PostgreSQL, Redis, and NLP services
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /api/search:
+    get:
+      consumes:
+      - application/json
+      description: Find places using natural language queries in Russian
+      parameters:
+      - description: Search query in Russian
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Latitude
+        in: query
+        name: lat
+        required: true
+        type: number
+      - description: Longitude
+        in: query
+        name: lon
+        required: true
+        type: number
+      - description: Search radius in meters (default 2000)
+        in: query
+        name: radius
+        type: integer
+      - description: Max results (default 20, max 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: 'Sort by: relevance (default) or rating'
+        in: query
+        name: sort
+        type: string
+      - description: City name (default moscow)
+        in: query
+        name: city
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SearchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Search for places
+      tags:
+      - search
+swagger: "2.0"

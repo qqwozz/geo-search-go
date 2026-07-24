@@ -10,6 +10,14 @@ import (
 	"geo-search/internal/services"
 )
 
+// HealthHandler godoc
+// @Summary Health check
+// @Description Check health of PostgreSQL, Redis, and NLP services
+// @Tags health
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 503 {object} map[string]string
+// @Router /api/health [get]
 func HealthHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		status := gin.H{"status": "ok"}

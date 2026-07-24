@@ -30,6 +30,15 @@ var popularQueries = []string{
 	"кафе с парковкой",
 }
 
+// AutocompleteHandler godoc
+// @Summary Get search suggestions
+// @Description Get autocomplete suggestions for search queries
+// @Tags autocomplete
+// @Accept json
+// @Produce json
+// @Param q query string false "Partial search query"
+// @Success 200 {object} map[string][]string
+// @Router /api/autocomplete [get]
 func AutocompleteHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		q := strings.ToLower(strings.TrimSpace(c.Query("q")))

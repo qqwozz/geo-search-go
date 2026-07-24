@@ -11,13 +11,22 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"geo-search/internal/config"
 	"geo-search/internal/database"
 	"geo-search/internal/handlers"
 	"geo-search/internal/middleware"
+
+	_ "geo-search/docs"
 )
 
+// @title Geo Search API
+// @version 1.0
+// @description Smart geo-search engine for finding places using natural language queries in Russian
+// @host localhost:8080
+// @BasePath /
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -56,6 +65,7 @@ func main() {
 	r.GET("/api/search", handlers.SearchHandler(pool, rdb, cfg.NLPServiceURL))
 	r.GET("/api/autocomplete", handlers.AutocompleteHandler())
 	r.GET("/api/health", handlers.HealthHandler(pool, rdb, cfg.NLPServiceURL))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Static("/assets", "./frontend/dist/assets")
 	r.StaticFile("/", "./frontend/dist/index.html")

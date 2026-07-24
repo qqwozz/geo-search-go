@@ -13,6 +13,24 @@ import (
 	"geo-search/internal/services"
 )
 
+// SearchHandler godoc
+// @Summary Search for places
+// @Description Find places using natural language queries in Russian
+// @Tags search
+// @Accept json
+// @Produce json
+// @Param q query string true "Search query in Russian"
+// @Param lat query number true "Latitude"
+// @Param lon query number true "Longitude"
+// @Param radius query int false "Search radius in meters (default 2000)"
+// @Param limit query int false "Max results (default 20, max 50)"
+// @Param offset query int false "Pagination offset (default 0)"
+// @Param sort query string false "Sort by: relevance (default) or rating"
+// @Param city query string false "City name (default moscow)"
+// @Success 200 {object} models.SearchResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/search [get]
 func SearchHandler(pool *pgxpool.Pool, rdb *redis.Client, nlpURL string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		query := strings.TrimSpace(c.Query("q"))
